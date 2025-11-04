@@ -168,17 +168,31 @@ const updateYOfTree = (
   height: number,
   nodePadding: number,
   links: ReadonlyArray<LinkDataItem>,
+  verticalAlign: SankeyVerticalAlign,
 ): Array<LinkDataItemDy> => {
   const yRatio: number = Math.min(
     ...depthTree.map(nodes => (height - (nodes.length - 1) * nodePadding) / sumBy(nodes, getValue)),
   );
 
   for (let d = 0, maxDepth = depthTree.length; d < maxDepth; d++) {
-    for (let i = 0, len = depthTree[d].length; i < len; i++) {
-      const node = depthTree[d][i];
+    const nodes = depthTree[d];
 
-      node.y = i;
-      node.dy = node.value * yRatio;
+    if (verticalAlign === 'top') {
+      let currentY = 0;
+      for (let i = 0, len = nodes.length; i < len; i++) {
+        const node = nodes[i];
+
+        node.dy = node.value * yRatio;
+        node.y = currentY;
+        currentY += node.dy + nodePadding;
+      }
+    } else {
+      for (let i = 0, len = nodes.length; i < len; i++) {
+        const node = nodes[i];
+
+        node.y = i;
+        node.dy = node.value * yRatio;
+      }
     }
   }
 
@@ -310,6 +324,7 @@ const computeData = ({
   nodeWidth,
   nodePadding,
   sort,
+  verticalAlign,
 }: {
   data: SankeyData;
   width: number;
@@ -318,6 +333,7 @@ const computeData = ({
   nodeWidth: number;
   nodePadding: number;
   sort: boolean;
+  verticalAlign: SankeyVerticalAlign;
 }): {
   nodes: ReadonlyArray<SankeyNode>;
   links: ReadonlyArray<SankeyLink>;
@@ -325,19 +341,21 @@ const computeData = ({
   const { links } = data;
   const { tree } = getNodesTree(data, width, nodeWidth);
   const depthTree = getDepthTree(tree);
-  const linksWithDy: Array<LinkDataItemDy> = updateYOfTree(depthTree, height, nodePadding, links);
+  const linksWithDy: Array<LinkDataItemDy> = updateYOfTree(depthTree, height, nodePadding, links, verticalAlign);
 
   resolveCollisions(depthTree, height, nodePadding, sort);
 
-  let alpha = 1;
-  for (let i = 1; i <= iterations; i++) {
-    relaxRightToLeft(tree, depthTree, linksWithDy, (alpha *= 0.99));
+  if (verticalAlign === 'center') {
+    let alpha = 1;
+    for (let i = 1; i <= iterations; i++) {
+      relaxRightToLeft(tree, depthTree, linksWithDy, (alpha *= 0.99));
 
-    resolveCollisions(depthTree, height, nodePadding, sort);
+      resolveCollisions(depthTree, height, nodePadding, sort);
 
-    relaxLeftToRight(tree, depthTree, linksWithDy, alpha);
+      relaxLeftToRight(tree, depthTree, linksWithDy, alpha);
 
-    resolveCollisions(depthTree, height, nodePadding, sort);
+      resolveCollisions(depthTree, height, nodePadding, sort);
+    }
   }
 
   updateYOfLinks(tree, linksWithDy);
@@ -479,6 +497,8 @@ type SankeyLinkOptions =
   | ((props: LinkProps) => ReactElement<SVGProps<SVGPathElement>>)
   | SVGProps<SVGPathElement>;
 
+type SankeyVerticalAlign = 'center' | 'top';
+
 interface SankeyProps {
   nameKey?: DataKey<any>;
   dataKey?: DataKey<any>;
@@ -500,6 +520,7 @@ interface SankeyProps {
   onMouseEnter?: (item: NodeProps | LinkProps, type: SankeyElementType, e: MouseEvent) => void;
   onMouseLeave?: (item: NodeProps | LinkProps, type: SankeyElementType, e: MouseEvent) => void;
   sort?: boolean;
+  verticalAlign?: SankeyVerticalAlign;
 }
 
 type Props = SVGProps<SVGSVGElement> & SankeyProps;
@@ -815,6 +836,7 @@ const sankeyDefaultProps = {
   iterations: 32,
   margin: { top: 5, right: 5, bottom: 5, left: 5 },
   sort: true,
+  verticalAlign: 'center',
 } as const satisfies Partial<Props>;
 
 type PropsWithResolvedDefaults = RequiresDefaultProps<Props, typeof sankeyDefaultProps>;
@@ -835,6 +857,7 @@ function SankeyImpl(props: PropsWithResolvedDefaults) {
     sort,
     linkCurvature,
     margin,
+    verticalAlign,
   } = props;
 
   const attrs = svgPropertiesNoEvents(others);
@@ -856,6 +879,7 @@ function SankeyImpl(props: PropsWithResolvedDefaults) {
       nodeWidth,
       nodePadding,
       sort,
+      verticalAlign,
     });
 
     const top = margin.top || 0;
@@ -880,7 +904,7 @@ function SankeyImpl(props: PropsWithResolvedDefaults) {
       modifiedLinks: newModifiedLinks,
       modifiedNodes: newModifiedNodes,
     };
-  }, [data, width, height, margin, iterations, nodeWidth, nodePadding, sort, link, node, linkCurvature]);
+  }, [data, width, height, margin, iterations, nodeWidth, nodePadding, sort, link, node, linkCurvature, verticalAlign]);
 
   const handleMouseEnter = useCallback(
     (item: NodeProps | LinkProps, type: SankeyElementType, e: MouseEvent) => {
