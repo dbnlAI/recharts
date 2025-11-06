@@ -350,7 +350,7 @@ const computeData = ({
 
   resolveCollisions(depthTree, height, nodePadding, sort);
 
-  if (verticalAlign === 'center') {
+  if (verticalAlign === 'justify') {
     let alpha = 1;
     for (let i = 1; i <= iterations; i++) {
       relaxRightToLeft(tree, depthTree, linksWithDy, (alpha *= 0.99));
@@ -502,7 +502,7 @@ type SankeyLinkOptions =
   | ((props: LinkProps) => ReactElement<SVGProps<SVGPathElement>>)
   | SVGProps<SVGPathElement>;
 
-type SankeyVerticalAlign = 'center' | 'top';
+type SankeyVerticalAlign = 'justify' | 'top';
 
 interface SankeyProps {
   nameKey?: DataKey<any>;
