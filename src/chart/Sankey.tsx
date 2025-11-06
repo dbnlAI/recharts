@@ -108,6 +108,7 @@ const getNodesTree = (
   { nodes, links }: SankeyData,
   width: number,
   nodeWidth: number,
+  align: 'left' | 'justify',
 ): { tree: SankeyNode[]; maxDepth: number } => {
   const tree = nodes.map((entry: SankeyNode, index: number) => {
     const result = searchTargetsAndSources(links, index);
@@ -134,10 +135,11 @@ const getNodesTree = (
     for (let i = 0, len = tree.length; i < len; i++) {
       const node = tree[i];
 
-      // TODO: remove this once renaud's PR is merged
-      // if (!node.targetNodes.length) {
-      //   node.depth = maxDepth;
-      // }
+      if (!node.targetNodes.length) {
+        if (align === 'justify') {
+          node.depth = maxDepth;
+        }
+      }
       node.x = node.depth * childWidth;
       node.dx = nodeWidth;
     }
@@ -326,6 +328,7 @@ const computeData = ({
   nodePadding,
   sort,
   verticalAlign,
+  align,
 }: {
   data: SankeyData;
   width: number;
@@ -335,12 +338,13 @@ const computeData = ({
   nodePadding: number;
   sort: boolean;
   verticalAlign: SankeyVerticalAlign;
+  align: 'left' | 'justify';
 }): {
   nodes: ReadonlyArray<SankeyNode>;
   links: ReadonlyArray<SankeyLink>;
 } => {
   const { links } = data;
-  const { tree } = getNodesTree(data, width, nodeWidth);
+  const { tree } = getNodesTree(data, width, nodeWidth, align);
   const depthTree = getDepthTree(tree);
   const linksWithDy: Array<LinkDataItemDy> = updateYOfTree(depthTree, height, nodePadding, links, verticalAlign);
 
@@ -522,6 +526,7 @@ interface SankeyProps {
   onMouseLeave?: (item: NodeProps | LinkProps, type: SankeyElementType, e: MouseEvent) => void;
   sort?: boolean;
   verticalAlign?: SankeyVerticalAlign;
+  align?: 'left' | 'justify';
 }
 
 type Props = SVGProps<SVGSVGElement> & SankeyProps;
@@ -838,6 +843,7 @@ const sankeyDefaultProps = {
   margin: { top: 5, right: 5, bottom: 5, left: 5 },
   sort: true,
   verticalAlign: 'center',
+  align: 'justify',
 } as const satisfies Partial<Props>;
 
 type PropsWithResolvedDefaults = RequiresDefaultProps<Props, typeof sankeyDefaultProps>;
@@ -859,6 +865,7 @@ function SankeyImpl(props: PropsWithResolvedDefaults) {
     linkCurvature,
     margin,
     verticalAlign,
+    align,
   } = props;
 
   const attrs = svgPropertiesNoEvents(others);
@@ -881,6 +888,7 @@ function SankeyImpl(props: PropsWithResolvedDefaults) {
       nodePadding,
       sort,
       verticalAlign,
+      align,
     });
 
     const top = margin.top || 0;
@@ -905,7 +913,7 @@ function SankeyImpl(props: PropsWithResolvedDefaults) {
       modifiedLinks: newModifiedLinks,
       modifiedNodes: newModifiedNodes,
     };
-  }, [data, width, height, margin, iterations, nodeWidth, nodePadding, sort, link, node, linkCurvature, verticalAlign]);
+  }, [data, width, height, margin, iterations, nodeWidth, nodePadding, sort, link, node, linkCurvature, align, verticalAlign]);
 
   const handleMouseEnter = useCallback(
     (item: NodeProps | LinkProps, type: SankeyElementType, e: MouseEvent) => {
